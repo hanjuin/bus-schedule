@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import MapUpdater from './components/MapUpdater';
 import Weather from './components/Weather';
+import { installApp, isPWA } from './utils/pwa.js';
 
 function App() {
   const [stops, setStops] = useState([])
@@ -76,7 +77,7 @@ function App() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch("http://localhost:3000/api/arrivals", {
+      const response = await fetch("http://192.168.1.147:3000/api/arrivals", {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -134,7 +135,7 @@ function App() {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const response = await fetch("http://localhost:3000/api/weather", {
+        const response = await fetch("http://192.168.1.147:3000/api/weather", {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -155,16 +156,25 @@ function App() {
 
   return (
     <div className="min-h-screen w-full flex justify-center items-start bg-white">
-      <div className="bg-gray-100 max-w-5xl w-full rounded-lg shadow-md p-6 mx-auto min-h-screen">
+      <div className="bg-gray-100 w-full rounded-lg shadow-md p-6 mx-auto min-h-screen">
         <div className='flex flex-col lg:flex-row gap-4 items-start'>
           <div className='basis-2/3'>
-            <h1 className="text-3xl font-bold mb-2 text-blue-900">Bus Timetable Schedule</h1>
-            <div className="text-3xl font-mono font-extrabold text-gray-800">
+            <h1 className="text-5xl font-bold mb-2 text-blue-900">Bus Timetable Schedule</h1>
+            <div className="text-4xl font-mono font-extrabold text-gray-800">
               {time.toLocaleTimeString()}
             </div>
           </div>
-          <div className='basis-1/3'>
+          <div className='basis-1/3 flex flex-col gap-2'>
             <Weather weatherData={weather} />
+            {!isPWA() && (
+              <button
+                id="install-button"
+                onClick={installApp}
+                className="hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                📱 Install App
+              </button>
+            )}
           </div>
         </div>
 
@@ -178,7 +188,7 @@ function App() {
           <div className="stops-container">
             {stops.map((stopData, index) => (
               <div key={index} className="stop-section">
-                <h3 className="text-xl font-semibold p-2 text-blue-900">
+                <h3 className="text-3xl font-semibold p-2 text-blue-900">
                   ➡️ {stopIdToLocation[stopData.stopId]}
                 </h3>
 
@@ -192,22 +202,22 @@ function App() {
                     <table className="min-w-full bg-white  rounded-lg shadow-md overflow-hidden">
                       <thead className="bg-blue-300 text-gray-900">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b rounded-tl-lg">Route</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b">Arrival Time</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b rounded-tr-lg">Time Left</th>
+                          <th className="px-6 py-3 text-left text-xl font-medium uppercase tracking-wider border-b rounded-tl-lg">Route</th>
+                          <th className="px-6 py-3 text-left text-xl font-medium uppercase tracking-wider border-b">Arrival Time</th>
+                          <th className="px-6 py-3 text-left text-xl font-medium uppercase tracking-wider border-b rounded-tr-lg">Time Left</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {stopData.arrivals.length > 0 ? (
                           stopData.arrivals.map((arrival, arrivalIndex) => (
                             <tr key={arrivalIndex} className="hover:bg-blue-50 transition-colors">
-                              <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 ${arrivalIndex === stopData.arrivals.length - 1 ? 'rounded-bl-lg' : ''}`}>
+                              <td className={`px-6 py-4 whitespace-nowrap text-xl font-medium text-gray-800 ${arrivalIndex === stopData.arrivals.length - 1 ? 'rounded-bl-lg' : ''}`}>
                                 {arrival.route.split("-")[0]}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 ">
+                              <td className="px-6 py-4 whitespace-nowrap text-xl text-gray-800 ">
                                 {new Date(arrival.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </td>
-                              <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-800 ${arrivalIndex === stopData.arrivals.length - 1 ? 'rounded-br-lg' : ''}`}>
+                              <td className={`px-6 py-4 whitespace-nowrap text-xl text-gray-800 ${arrivalIndex === stopData.arrivals.length - 1 ? 'rounded-br-lg' : ''}`}>
                                 {(arrival.timeleft)} min
                               </td>
                             </tr>
@@ -239,7 +249,7 @@ function App() {
                             dragging={false} 
                             zoom={zoom} 
                             scrollWheelZoom="center" 
-                            className="h-[250px] w-full rounded-lg shadow-md"
+                            className="h-[360px] w-full rounded-lg shadow-md"
                             zoomControl={false}
                             attributionControl={false}
                           >

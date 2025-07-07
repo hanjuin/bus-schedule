@@ -20,22 +20,22 @@ function Weather({ weatherData }) {
                 
                 <div key={index} className='basis-1/3 text-right flex flex-col items-end'>
                     <img src={`https:${day.day.condition.icon}`} alt={day.day.condition.text} style={{ width: '32px', height: '32px' }} className='ml-auto'/>
-                    <h3 className="font-semibold">{new Date(day.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}</h3>
+                    <h3 className="font-semibold text-md">{new Date(day.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}</h3>
                     {index === 0 ? (
                         <>
-                            <div className="flex justify-between w-full">
+                            <div className="flex justify-between w-full text-md">
                                 <span className="text-gray-700 font-semibold">Max</span>
                                 <span className="text-gray-700 ">{day.day.maxtemp_c}°C</span>
                             </div>
-                            <div className="flex justify-between w-full">
+                            <div className="flex justify-between w-full text-md">
                                 <span className="text-gray-700 font-semibold">Min</span>
                                 <span className="text-gray-700">{day.day.mintemp_c}°C</span>
                             </div>
                         </>
                     ) : (
                         <>
-                            <p className="text-gray-700">{day.day.maxtemp_c}°C</p>
-                            <p className="text-gray-700">{day.day.mintemp_c}°C</p>
+                            <p className="text-gray-700 text-md">{day.day.maxtemp_c}°C</p>
+                            <p className="text-gray-700 text-md">{day.day.mintemp_c}°C</p>
                         </>
                     )}
                     {/* <p className="text-gray-700">{day.day.condition.text}</p> */}

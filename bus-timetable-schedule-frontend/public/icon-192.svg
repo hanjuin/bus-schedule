@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="192" height="192" rx="24" fill="#1e40af"/>
+<path d="M48 144V96H64V80H128V96H144V144H128V128H64V144H48ZM64 112V96H128V112H64ZM80 64V48H112V64H80Z" fill="white"/>
+<text x="96" y="170" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">BUS</text>
+</svg>
