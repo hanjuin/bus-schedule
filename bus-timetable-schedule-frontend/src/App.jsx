@@ -1,47 +1,76 @@
 import { useState, useEffect, useCallback } from 'react'
 import './App.css'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import MapUpdater from './components/MapUpdater';
+import Weather from './components/Weather';
 
 function App() {
   const [stops, setStops] = useState([])
-  const [loading, setLoading] = useState(true) // Start with loading true
+  const [loading, setLoading] = useState(true) 
   const [error, setError] = useState(null)
-  const [buses, setBuses] = useState({})
+  const [weather, setWeather] = useState([]);
+
   const stopIdToLocation = {
-    "8596-9b3631c6": "To City Centre",
-    "7285-77225635": "To Blockhouse",
+    "8596-9b3631c6": "Towards City Centre",
+    "7285-77225635": "Towards Blockhouse",
+  };
+
+  // Stop coordinates mapping
+  const stopIdToCoordinates = {
+    "8596-9b3631c6": [-36.90854478306579, 174.73620033480188],
+    "7285-77225635": [-36.90854478306579, 174.73620033480188], 
   };
   const [time, setTime] = useState(new Date());
+
+  // Function to calculate appropriate zoom level based on distance between two points
+  const calculateZoom = (lat1, lon1, lat2, lon2) => {
+    // Calculate distance between two points using Haversine formula
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in kilometers
+
+    // Map distance to zoom level (adjust these values as needed)
+    if (distance < 0.5) return 16;      // Very close - high zoom
+    if (distance < 1) return 15;        // Close - medium-high zoom
+    if (distance < 2) return 14;        // Medium distance
+    if (distance < 5) return 13;        // Far - medium zoom
+    if (distance < 10) return 12;       // Very far - low zoom
+    return 11;                          // Default for very long distances
+  };
+
+  // Function to calculate center point - always center on the stop
+  const calculateCenter = (lat1, lon1, lat2, lon2) => {
+    return [lat2, lon2]; // Return stop coordinates (lat2, lon2)
+  };
+
+  const busIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
+
+  const stopIcon = new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
 
   useEffect(() => {
     const interval = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(interval); // Clean up on unmount
   }, []);
-
-  //retrieve the closest bus location of each stop
-  const retrieveBusLocation = useCallback(async (vehicleID) => {
-    try{
-      const response = await fetch(`http://localhost:3000/api/vehicle/${vehicleID}`,{
-        method: 'GET',
-        headers:{
-          'Content-Type': 'application/json'
-        }
-      })
-      if(!response.ok){
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      // Store bus data with vehicle ID as key
-      setBuses(prev => ({
-        ...prev,
-        [vehicleID]: data
-      }))
-      console.log(`Bus location for ${vehicleID}:`, data);
-    }catch(error) {
-      console.error(`Error fetching bus ${vehicleID}:`, error)
-      // Don't set global error for individual bus failures
-    }
-  }, [])
 
   const retrieveArrivals = useCallback(async () => {
     setLoading(true)
@@ -72,7 +101,7 @@ function App() {
             // Fetch location for the closest bus
             if (closestBus.vehicleId && closestBus.vehicleId !== 'unknown') {
               console.log(`Fetching location for closest bus ${closestBus.vehicleId} at stop ${stopData.stopId}`);
-              retrieveBusLocation(closestBus.vehicleId);
+              //retrieveBusLocation(closestBus.vehicleId);
             }
             
             // Log all other arrivals
@@ -92,26 +121,53 @@ function App() {
     } finally {
       setLoading(false)
     }
-  }, [retrieveBusLocation])
+  }, [])
 
   // Automatically fetch arrivals when component mounts and every 10 seconds
   useEffect(() => {
     retrieveArrivals(); // Initial fetch
-    const interval = setInterval(() => retrieveArrivals(), 10000);
+    const interval = setInterval(() => retrieveArrivals(), 5000);
     return () => clearInterval(interval);
   }, [retrieveArrivals])
 
-
-  //process the stops format
-
+  // Fetch weather data
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/api/weather", {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        const data = await response.json()
+        setWeather(data)
+      } catch (error) {
+        console.error('Error fetching weather:', error)
+        setError(error.message)
+      }
+    }
+    fetchWeather();
+  }, [])
 
   return (
-    <div className="min-h-screen flex justify-center items-start bg-gray-100 px-4">
-      <div className="bg-white max-w-3xl w-full rounded-lg shadow-md p-6 mx-auto min-h-screen">
-        <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">Bus Timetable Schedule</h1>
-        <div className="text-4xl font-mono font-extrabold text-black text-center">
-          {time.toLocaleTimeString()}
+    <div className="min-h-screen w-full flex justify-center items-start bg-white">
+      <div className="bg-gray-100 max-w-5xl w-full rounded-lg shadow-md p-6 mx-auto min-h-screen">
+        <div className='flex flex-col lg:flex-row gap-4 items-start'>
+          <div className='basis-2/3'>
+            <h1 className="text-3xl font-bold mb-2 text-blue-900">Bus Timetable Schedule</h1>
+            <div className="text-3xl font-mono font-extrabold text-gray-800">
+              {time.toLocaleTimeString()}
+            </div>
+          </div>
+          <div className='basis-1/3'>
+            <Weather weatherData={weather} />
+          </div>
         </div>
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             <p>Error: {error}</p>
@@ -119,12 +175,11 @@ function App() {
         )}
 
         {stops.length > 0 && (
-          <div className="stops-container space-y-8">
-            {/* <h2 className="text-2xl font-bold mb-6 text-center">Bus Stops and Arrivals</h2> */}
+          <div className="stops-container">
             {stops.map((stopData, index) => (
               <div key={index} className="stop-section">
-                <h3 className="text-xl font-semibold mb-4 text-gray-800">
-                  {stopIdToLocation[stopData.stopId]}
+                <h3 className="text-xl font-semibold p-2 text-blue-900">
+                  ➡️ {stopIdToLocation[stopData.stopId]}
                 </h3>
 
                 {stopData.error ? (
@@ -132,39 +187,77 @@ function App() {
                     <p>Error: {stopData.error}</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-300 rounded-lg shadow-md">
-                      <thead className="bg-blue-50">
+                  <div className="flex flex-col lg:flex-row gap-4 items-start">
+                    <div className="basis-1/2">
+                    <table className="min-w-full bg-white  rounded-lg shadow-md overflow-hidden">
+                      <thead className="bg-blue-300 text-gray-900">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b">Route</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b rounded-tl-lg">Route</th>
                           <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b">Arrival Time</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b">Time Left</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider border-b rounded-tr-lg">Time Left</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {stopData.arrivals.length > 0 ? (
                           stopData.arrivals.map((arrival, arrivalIndex) => (
                             <tr key={arrivalIndex} className="hover:bg-blue-50 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 ${arrivalIndex === stopData.arrivals.length - 1 ? 'rounded-bl-lg' : ''}`}>
                                 {arrival.route.split("-")[0]}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800 ">
                                 {new Date(arrival.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <td className={`px-6 py-4 whitespace-nowrap text-sm text-gray-800 ${arrivalIndex === stopData.arrivals.length - 1 ? 'rounded-br-lg' : ''}`}>
                                 {(arrival.timeleft)} min
                               </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="3" className="px-6 py-8 text-center text-gray-500 italic">
+                            <td colSpan="3" className="px-6 py-8 text-center text-gray-500 italic rounded-b-lg">
                               No upcoming buses for this stop
                             </td>
                           </tr>
                         )}
                       </tbody>
                     </table>
+                    </div>
+                    <div className="basis-1/2">
+                    {stopData.arrivals.length > 0 && stopData.arrivals[0].vehiclePosition && (
+                      (() => {
+                        const busLat = stopData.arrivals[0].vehiclePosition.position.latitude;
+                        const busLon = stopData.arrivals[0].vehiclePosition.position.longitude;
+                        const stopCoords = stopIdToCoordinates[stopData.stopId];
+                        const [stopLat, stopLon] = stopCoords;
+                        const zoom = calculateZoom(busLat, busLon, stopLat, stopLon);
+                        const center = calculateCenter(busLat, busLon, stopLat, stopLon);
+                        
+                        return (
+                          <MapContainer 
+                            key={`map-${stopData.stopId}`} // Only recreate when stop changes, not on position updates
+                            center={center} 
+                            dragging={false} 
+                            zoom={zoom} 
+                            scrollWheelZoom="center" 
+                            className="h-[250px] w-full rounded-lg shadow-md"
+                            zoomControl={false}
+                            attributionControl={false}
+                          >
+                            <MapUpdater 
+                              center={center}
+                              zoom={zoom}
+                              busPosition={[busLat, busLon]}
+                              stopPosition={[stopLat, stopLon]}
+                              busIcon={busIcon}
+                              stopIcon={stopIcon}
+                              stopData={stopData}
+                              stopIdToLocation={stopIdToLocation}
+                            />
+                          </MapContainer>
+                        );
+                      })()
+                    )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -172,24 +265,12 @@ function App() {
           </div>
         )}
 
-        {/* <div className="text-center mb-6 mt-6">
-          <button 
-            onClick={retrieveArrivals} 
-            disabled={loading}
-            className="bg-blue-500 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded transition duration-300"
-          >
-            {loading ? 'Loading...' : 'Refresh Arrivals'}
-          </button>
-        </div> */}
-
-        {/* {loading && (
-          <p className="text-center text-gray-600 mb-4">Loading bus schedule data...</p>
-        )} */}
-
         {!loading && stops.length === 0 && !error && (
           <p className="text-center text-gray-600">No bus arrivals found at the moment.</p>
         )}
       </div>
+      
+      
     </div>
 
   )

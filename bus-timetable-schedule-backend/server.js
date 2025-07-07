@@ -5,11 +5,30 @@ const API_KEY = '4e808ea49348471087e29a52be43b82d';
 // const STOP_ID = '8596-9b3631c6';
 const URL = 'https://api.at.govt.nz/realtime/legacy/tripupdates';
 const URL_position = 'https://api.at.govt.nz/realtime/legacy/vehiclelocations'
-
 const stops = [
   { id: '8596-9b3631c6' },
   { id: '7285-77225635' },
 ];
+
+const weatherApiKey = '9a5f28965b71458180f40722250707';
+const weatherApiUrl = 'https://api.weatherapi.com/v1/forecast.json';
+const weatherLocation = 'Auckland'; // Default location for weather
+
+async function fetchWeatherForecast() {
+  try {
+    const response = await axios.get(weatherApiUrl, {
+      params: {
+        key: weatherApiKey,
+        q: weatherLocation,
+        days: 3
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching weather forecast:', error.message);
+    return null;
+  }
+}
 
 async function fetchTripUpdates(STOP_ID) {
   const stopArrivals = []; // Create a separate array for each stop
@@ -48,20 +67,24 @@ async function fetchTripUpdates(STOP_ID) {
     stopArrivals.sort((a, b) => a.time - b.time); // Sort by soonest
 
     const nextArrivals = stopArrivals.slice(0, 4); // Only show next 4
-
-    //console.log(`\n🚌 Next 4 arrivals for stop ${STOP_ID}:\n`);
-
-    if (nextArrivals.length === 0) {
-      //console.log('No upcoming buses found.');
-    } else {
-        nextArrivals.forEach((a, idx) => {
-        //console.log(`${idx + 1}. Route ${a.route} at ${a.time.toLocaleTimeString()}`);
-      });
-    }
+    
+    // Fetch vehicle positions for each arrival
+    const arrivalsWithPositions = await Promise.all(
+      nextArrivals.map(async (arrival) => {
+        if (arrival.vehicleId && arrival.vehicleId !== 'unknown') {
+          const vehiclePosition = await fetchVehiclePositions(arrival.vehicleId);
+          return {
+            ...arrival,
+            vehiclePosition: vehiclePosition
+          };
+        }
+        return arrival;
+      })
+    );
 
     return {
       stopId: STOP_ID,
-      arrivals: nextArrivals
+      arrivals: arrivalsWithPositions
     };
 
   } catch (error) {
@@ -120,6 +143,8 @@ async function fetchVehiclePositions(vehicleId) {
   }
 }
 
+
+
 /// GET request handler for /api/arrivals
 const express = require('express');
 const cors = require('cors');
@@ -134,12 +159,12 @@ app.use(express.json());
 
 app.get('/api/arrivals', async (req, res) => {
   try {
-    // Fetch arrivals for each stop
+    // Fetch arrivals for each stop (now includes vehicle positions)
     const stopResults = await Promise.all(
       stops.map(stop => fetchTripUpdates(stop.id))
     );
     
-    // Return the results grouped by stop
+    // Return the results grouped by stop with vehicle positions included
     res.status(200).json({
       stops: stopResults,
       timestamp: new Date().toISOString()
@@ -150,26 +175,17 @@ app.get('/api/arrivals', async (req, res) => {
   }
 });
 
-app.get('/api/vehicle/:vehicleId', async (req, res) => {
-  const vehicleId = req.params.vehicleId;
-  console.log(`Received request for vehicle ID: ${vehicleId}`);
-  
+app.get('/api/weather', async (req, res) => {
   try {
-    const vehicle = await fetchVehiclePositions(vehicleId);
-    if (!vehicle) {
-      console.log(`Vehicle ${vehicleId} not found - returning 404`);
-      return res.status(404).json({ 
-        error: 'Vehicle not found',
-        searchedId: vehicleId,
-        message: 'Check server logs for available vehicle IDs'
-      });
+    const weatherData = await fetchWeatherForecast();
+    if (weatherData) {
+      res.status(200).json(weatherData);
+    } else {
+      res.status(500).json({ error: 'Failed to fetch weather data' });
     }
-    
-    console.log(`Successfully found vehicle ${vehicleId}`);
-    res.status(200).json(vehicle);
   } catch (error) {
-    console.error('Error fetching vehicle:', error);
-    res.status(500).json({ error: 'Failed to fetch vehicle' });
+    console.error('Error fetching weather:', error);
+    res.status(500).json({ error: 'Failed to fetch weather data' });
   }
 });
 
