@@ -1,7 +1,9 @@
 const axios = require('axios');
 const GtfsRealtimeBindings = require('gtfs-realtime-bindings');
+const config = require('./config/env'); // Import environment configuration
 
-const API_KEY = '4e808ea49348471087e29a52be43b82d';
+// Use environment variables instead of hardcoded keys
+const API_KEY = config.gtfsApiKey;
 // const STOP_ID = '8596-9b3631c6';
 const URL = 'https://api.at.govt.nz/realtime/legacy/tripupdates';
 const URL_position = 'https://api.at.govt.nz/realtime/legacy/vehiclelocations'
@@ -10,7 +12,7 @@ const stops = [
   { id: '7285-77225635' },
 ];
 
-const weatherApiKey = '9a5f28965b71458180f40722250707';
+const weatherApiKey = config.weatherApiKey;
 const weatherApiUrl = 'https://api.weatherapi.com/v1/forecast.json';
 const weatherLocation = 'Auckland'; // Default location for weather
 
@@ -149,10 +151,16 @@ async function fetchVehiclePositions(vehicleId) {
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Enable CORS for all routes
-app.use(cors());
+// Use configuration for server setup
+const PORT = config.port;
+const HOST = config.host;
+
+// Enable CORS with configuration
+app.use(cors({
+  origin: config.corsEnabled ? config.allowedOrigins : false,
+  credentials: true
+}));
 
 // Middleware to parse JSON
 app.use(express.json());
@@ -189,6 +197,14 @@ app.get('/api/weather', async (req, res) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+  console.log(`📦 Environment: ${config.nodeEnv}`);
+  console.log(`🌐 CORS enabled: ${config.corsEnabled}`);
+  console.log(`📝 Request logging: ${config.enableRequestLogging}`);
+  
+  if (config.isDevelopment) {
+    console.log(`🔧 Frontend URL: ${config.frontendUrl}`);
+    console.log(`⚡ Debug mode enabled`);
+  }
 });

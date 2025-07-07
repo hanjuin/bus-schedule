@@ -5,6 +5,7 @@ import L from 'leaflet';
 import MapUpdater from './components/MapUpdater';
 import Weather from './components/Weather';
 import { installApp, isPWA } from './utils/pwa.js';
+import config from './config/env.js';
 
 function App() {
   const [stops, setStops] = useState([])
@@ -77,7 +78,7 @@ function App() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch("http://192.168.1.147:3000/api/arrivals", {
+      const response = await fetch(config.arrivalsApiUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -92,7 +93,7 @@ function App() {
       setStops(data.stops || [])
       
       // Debug logging and fetch closest bus locations
-      if (data.stops) {
+      if (config.debugMode && data.stops) {
         for (const stopData of data.stops) {
           if (stopData.arrivals && stopData.arrivals.length > 0) {
             // Get the closest bus (first arrival since they're sorted by time)
@@ -127,7 +128,7 @@ function App() {
   // Automatically fetch arrivals when component mounts and every 10 seconds
   useEffect(() => {
     retrieveArrivals(); // Initial fetch
-    const interval = setInterval(() => retrieveArrivals(), 5000);
+    const interval = setInterval(() => retrieveArrivals(), config.updateInterval);
     return () => clearInterval(interval);
   }, [retrieveArrivals])
 
@@ -135,7 +136,7 @@ function App() {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const response = await fetch("http://192.168.1.147:3000/api/weather", {
+        const response = await fetch(config.weatherApiUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -159,7 +160,7 @@ function App() {
       <div className="bg-gray-100 w-full rounded-lg shadow-md p-6 mx-auto min-h-screen">
         <div className='flex flex-col lg:flex-row gap-4 items-start'>
           <div className='basis-2/3'>
-            <h1 className="text-5xl font-bold mb-2 text-blue-900">Bus Timetable Schedule</h1>
+            <h1 className="text-5xl font-bold mb-2 text-blue-900">{config.appName}</h1>
             <div className="text-4xl font-mono font-extrabold text-gray-800">
               {time.toLocaleTimeString()}
             </div>
