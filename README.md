@@ -39,11 +39,3 @@ Designed to run on a fullscreen tablet (e.g., iPad) in your room, it helps you p
 ![Screenshot 2025-07-08 at 4 32 57 PM jpeg](https://github.com/user-attachments/assets/dfbfe99b-0e14-49a5-93a2-d09a2b3d9477)
 
 ---
-
-## ⚙️ Setup Instructions
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/yourusername/bus-timetable-display.git
-cd bus-timetable-display
