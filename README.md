@@ -36,7 +36,7 @@ Designed to run on a fullscreen tablet (e.g., iPad) in your room, it helps you p
 
 ## 📸 Preview
 
-> _Include a screenshot or photo of the UI running on your display device_
+![Screenshot 2025-07-08 at 4 32 57 PM jpeg](https://github.com/user-attachments/assets/dfbfe99b-0e14-49a5-93a2-d09a2b3d9477)
 
 ---
 
